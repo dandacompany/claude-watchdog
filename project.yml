@@ -1,0 +1,66 @@
+name: ClaudeWatchdog
+options:
+  bundleIdPrefix: com.dante-labs
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_HARDENED_RUNTIME: true
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: YXPA46F4SJ
+    PRODUCT_NAME: "Claude Watchdog"
+    ARCHS: "arm64 x86_64"
+    ONLY_ACTIVE_ARCH: false
+
+targets:
+  ClaudeWatchdog:
+    type: application
+    platform: macOS
+    sources:
+      - path: ClaudeWatchdog
+    settings:
+      base:
+        INFOPLIST_FILE: ClaudeWatchdog/App/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.dante-labs.ClaudeWatchdog
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_PREVIEWS: true
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+    entitlements:
+      path: ClaudeWatchdog/App/ClaudeWatchdog.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+        com.apple.security.network.client: true
+        com.apple.security.application-groups:
+          - YXPA46F4SJ.com.dante-labs.ClaudeWatchdog
+    dependencies:
+      - target: ClaudeWatchdogWidgetExtension
+        embed: true
+
+  ClaudeWatchdogWidgetExtension:
+    type: app-extension
+    platform: macOS
+    product: ClaudeWatchdogWidgetExtension
+    sources:
+      - path: ClaudeWatchdogWidget
+    settings:
+      base:
+        INFOPLIST_FILE: ClaudeWatchdogWidget/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.dante-labs.ClaudeWatchdog.Widget
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SKIP_INSTALL: true
+        PRODUCT_NAME: "ClaudeWatchdogWidgetExtension"
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"
+    entitlements:
+      path: ClaudeWatchdogWidget/ClaudeWatchdogWidget.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups:
+          - YXPA46F4SJ.com.dante-labs.ClaudeWatchdog
