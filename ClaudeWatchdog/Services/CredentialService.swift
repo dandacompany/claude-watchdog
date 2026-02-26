@@ -1,6 +1,7 @@
 import Foundation
 
-/// Claude Code CLI 크리덴셜을 시스템 Keychain에서 읽는 서비스
+/// Claude Code CLI 크리덴셜을 읽는 서비스
+/// - 우선순위: ~/.claude/.credentials.json 파일 → macOS Keychain fallback
 final class CredentialService {
     static let shared = CredentialService()
 
@@ -26,8 +27,34 @@ final class CredentialService {
 
     private init() {}
 
-    /// 시스템 Keychain에서 Claude Code 크리덴셜 읽기
+    /// Claude Code 크리덴셜 읽기 (파일 우선, Keychain fallback)
     func readSystemCredentials() throws -> String {
+        // 1차: ~/.claude/.credentials.json 파일에서 읽기 (Claude Code v2.x+)
+        if let fileCredentials = readFileCredentials() {
+            return fileCredentials
+        }
+
+        // 2차: macOS Keychain에서 읽기 (Claude Code v1.x 호환)
+        return try readKeychainCredentials()
+    }
+
+    /// ~/.claude/.credentials.json 파일에서 크리덴셜 읽기
+    private func readFileCredentials() -> String? {
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser
+        let credentialPath = homeDir.appendingPathComponent(".claude/.credentials.json")
+
+        guard FileManager.default.fileExists(atPath: credentialPath.path),
+              let data = try? Data(contentsOf: credentialPath),
+              let content = String(data: data, encoding: .utf8),
+              !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+
+        return content
+    }
+
+    /// macOS Keychain에서 크리덴셜 읽기 (레거시 방식)
+    private func readKeychainCredentials() throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
         process.arguments = [
@@ -74,6 +101,7 @@ final class CredentialService {
     }
 
     /// 토큰 만료 확인
+    /// - Note: expiresAt은 밀리초(ms) 단위 (Claude Code v2.x+)
     func isTokenExpired(_ jsonData: String) -> Bool {
         guard let data = jsonData.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -81,7 +109,9 @@ final class CredentialService {
               let expiresAt = oauth["expiresAt"] as? TimeInterval else {
             return false
         }
-        return Date() > Date(timeIntervalSince1970: expiresAt)
+        // 밀리초 vs 초 자동 판별: 1e12 이상이면 밀리초로 간주
+        let expiresAtSeconds = expiresAt > 1e12 ? expiresAt / 1000.0 : expiresAt
+        return Date() > Date(timeIntervalSince1970: expiresAtSeconds)
     }
 
     /// 유효한 access token 가져오기 (Keychain 읽기 + 검증)
